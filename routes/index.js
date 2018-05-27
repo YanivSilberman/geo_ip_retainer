@@ -8,14 +8,6 @@ import db from '../db/config';
 
 import { makeIpStackReq } from '../library';
 
-/*
-TODO
-  document
-  client side
-  deploy, and test in production
-*/
-
-
 // DEFAULT INDEX ROUTE
 
 router.get('/', (req, res, next) => {
