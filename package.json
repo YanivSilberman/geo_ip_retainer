@@ -6,7 +6,10 @@
   },
   "private": true,
   "scripts": {
-    "start": "babel-node ./starter.js",
+    "start": "node ./build/starter.js",
+    "clean": "rm -rf build && mkdir build",
+    "build-server": "babel -d ./build ./starter.js -s",
+    "build": "npm run clean && npm run build-server",
     "test": "./node_modules/.bin/mocha --compilers js:babel-core/register --require babel-polyfill ./test.js"
   },
   "babel": {
