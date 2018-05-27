@@ -14,7 +14,7 @@ router.get('/', (req, res, next) => {
 
   // Get request ip address
   let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  if (ip.substr(0, 7) == "::ffff:") ipAddress = ipAddress.substr(7);
+  if (ipAddress.substr(0, 7) == "::ffff:") ipAddress = ipAddress.substr(7);
 
   // general return functions
   const success = msg => () =>
