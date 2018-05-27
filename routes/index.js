@@ -13,7 +13,8 @@ import { makeIpStackReq } from '../library';
 router.get('/', (req, res, next) => {
 
   // Get request ip address
-  const ipAddress = req.connection.remoteAddress;
+  let ipAddress = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  if (ip.substr(0, 7) == "::ffff:") ipAddress = ipAddress.substr(7);
 
   // general return functions
   const success = msg => () =>
