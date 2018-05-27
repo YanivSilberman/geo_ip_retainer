@@ -17,8 +17,8 @@ router.get('/', (req, res, next) => {
   if (ipAddress.substr(0, 7) == "::ffff:") ipAddress = ipAddress.substr(7);
 
   // general return functions
-  const success = msg => () =>
-    res.status(200).render('index', { 'title': msg });
+  const success = (msg, ip, geo) => () =>
+    res.status(200).render('index', { 'title': msg, ip, geo });
   const failure = msg => () =>
     res.status(200).render('error', { 'title': msg });
 
@@ -34,12 +34,12 @@ router.get('/', (req, res, next) => {
       makeIpStackReq(
         ipAddress,
         body => dbMethods([
-          success('More than 30s passed, updated database'),
+          success('More than 30s passed, updated database', ipAddress, body),
           failure('More than 30s passed, db update failed')
         ]).putStack(id, body)
       );
     } else {
-      success('IP stored, less than 30 days have passed')();
+      success('IP stored, less than 30 days have passed', ipAddress, JSON.parse(data.ipstack))();
     }
   };
 
@@ -49,7 +49,7 @@ router.get('/', (req, res, next) => {
     makeIpStackReq(
       ipAddress,
       body => dbMethods([
-        success('New IP, geo location saved'),
+        success('New IP, geo location saved', ipAddress, body),
         failure('New IP, error saving geo location')
       ]).insertStack(ipAddress, body));
   };
