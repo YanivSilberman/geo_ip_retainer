@@ -1,14 +1,15 @@
+/*
 const promiseLib = require('bluebird');
 const pgp = require('pg-promise')({ promiseLib });
 require('dotenv').config();
 
-/*
+
 
 connect to aws
 psql --host=geo.caub3fkwqsl4.us-east-1.rds.amazonaws.com --port=5432 --username=yanivsilberman --password --dbname=geo
 pass: geoipretainer
 
-*/
+
 
 const {
   env: { AWS_HOST, AWS_PORT, AWS_DB, AWS_USER, AWS_PASSWORD }
@@ -23,3 +24,4 @@ const connectionParams = {
 };
 
 export default pgp(connectionParams);
+*/

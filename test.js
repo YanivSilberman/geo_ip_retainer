@@ -1,119 +1,101 @@
 require('dotenv').config();
+const sinon = require('sinon');
+require('sinon-mongoose');
 const expect = require('chai').expect;
-import dbMethods from './db';
-import db from './db/config';
 
-const SUCCESS = 'SUCCESS';
-const FAILURE = 'FAILURE';
+import User from './db/models/User';
+import controllers from './db/controllers/user.ctrl';
 
-const successCallback = () => SUCCESS;
-const failureCallback = () => FAILURE;
+describe('query all IP addresses', () => {
+  it('should query all users and return array of ips', done => {
+    const UserMock = sinon.mock(User);
+    const expectedResult = {status: true, users: []};
+    UserMock.expects('find').yields(null, expectedResult);
+    User.find((err, result) => {
+        UserMock.verify();
+        UserMock.restore();
+        expect(result.status).to.be.true;
+        done();
+    });
+  });
+});
+
 
 // TEST GET STACK QUERY
 describe('query by IP address', () => {
-  it('should find one with an existing ip and decline one without', async () => {
-
-    const goodIp = "::1";
-    const badIp = "1234";
-
-    const methods = dbMethods([successCallback, failureCallback]);
-
-    const good = await methods.getStack(goodIp);
-    const bad = await methods.getStack(badIp);
-
-    expect(good).to.be.equal(SUCCESS);
-    expect(bad).to.be.equal(FAILURE);
+  it('should find one with an existing ip and decline one without', done => {
+    const UserMock = sinon.mock(User);
+    const expectedResult = {status: true};
+    UserMock.expects('findById').yields(null, expectedResult);
+    User.findById((err, result) => {
+        UserMock.verify();
+        UserMock.restore();
+        expect(result.status).to.be.true;
+        done();
+    });
 
   });
 });
 
 
+
 // TEST INSERT STACK
 describe('insert new row', () => {
-  it('should insert a new row', async () => {
-    const fakeIp = "1234567";
-    const fakeBody = "test";
-
-    const methods = dbMethods([successCallback, failureCallback]);
-
-    const insert = await methods.insertStack(fakeIp, fakeBody);
-    const data = await db.one('select ip_address from users where ip_address = $1', fakeIp).then(d => d);
-
-    expect(insert).to.be.equal(SUCCESS);
-    expect(data.ip_address).to.be.equal(fakeIp);
-
-    // clear
-    db.none('DELETE FROM users WHERE ip_address = $1', fakeIp);
+  it('should insert a new row', done => {
+    const UserMock = sinon.mock(
+      new User({ user: 'Save new user from mock'})
+    );
+    const user = UserMock.object;
+    const expectedResult = { status: true };
+    UserMock.expects('save').yields(null, expectedResult);
+    user.save((err, result) => {
+      UserMock.verify();
+      UserMock.restore();
+      expect(result.status).to.be.true;
+      done();
+    });
   });
 });
 
 
 // TEST PUT STACK
 describe('put new row', () => {
-  it('should put a new row and fail to put second row with fake id', async () => {
-    const fakeId = "-1";
-    const address = "123456";
-    const stack = "fake";
-    const putStack = "flake";
-
-    // create mock row
-    const newRowId = await db.one(
-        'INSERT INTO users(ip_address, ipstack, last_update) ' +
-        'values($(address), $(stack), CURRENT_DATE) ' +
-        'RETURNING id;',
-        {address, stack}
-      )
-      .then(({id}) => id)
-      .catch(err => console.log('err', err));
-
-    const methods = dbMethods([
-      d => d.ip_stack,
-      err => {console.log('err', err); return FAILURE}
-    ]);
-
-    // run methods
-    const goodPut = await methods.putStack(newRowId, putStack);
-    const badPut = await methods.putStack(fakeId, stack);
-
-    const data = await db.one('select ipstack from users where id = $1', newRowId).then(d => d.ipstack);
-
-    expect(JSON.parse(data)).to.be.equal(putStack);
-    expect(badPut).to.be.equal(FAILURE);
-
-    // clear
-    db.none('DELETE FROM users WHERE id = $1', newRowId);
+  it('should put a new row and fail to put second row with fake id', done => {
+    const UserMock = sinon.mock(new User({ last_update: new Date().getTime() }));
+    const user = UserMock.object;
+    const expectedResult = { status: true };
+    const args = {_id: 12345};
+    UserMock.expects('save').withArgs(args).yields(null, expectedResult);
+    user.save(args, (err, result) => {
+      UserMock.verify();
+      UserMock.restore();
+      expect(result.status).to.be.true;
+      done();
+    });
   });
 });
+
 
 
 // TEST GET EXPIRED
 describe('get rows last updated > 30 days ago', () => {
-  it('should only get all updated over a month ago', async () => {
-    const address = "fake";
-    const stack = "fake";
-
-    // create mock rows
-    const createMock = date => db.one(
-      'INSERT INTO users(ip_address, ipstack, last_update)' +
-      `values($(address), $(stack), ${date}) ` +
-      'RETURNING id',
-      {address, stack}
-    ).then(d => d.id);
-
-    // months ago
-    const past_id = await createMock("CURRENT_DATE - interval '31 days'");
-
-    // get
-    const methods = dbMethods([d => d]);
-    const goodGet = await methods.getExpired();
-
-    expect(goodGet.map(i => i.id)).to.include(past_id);
-
-    // clear
-    db.none('DELETE FROM users WHERE id = $1', past_id);
+  it('should only get all updated over a month ago', done => {
+    let d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    const UserMock = sinon.mock(User);
+    const expectedResult = {status: true, users: []};
+    const args = { last_update : { $lt: d.getTime() }};
+    UserMock.expects('find').withArgs(args).yields(null, expectedResult);
+    User.find(args, (err, result) => {
+        UserMock.verify();
+        UserMock.restore();
+        expect(result.status).to.be.true;
+        done();
+    });
   });
 });
 
+/*
 // TEST BATCH UPDATE
 describe('batch update from array', () => {
   it('should update all rows by array', async () => {
@@ -163,3 +145,4 @@ describe('batch update from array', () => {
     }
   });
 });
+*/

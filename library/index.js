@@ -5,6 +5,7 @@ const ipstack = ip =>
 
 export const makeIpStackReq = (ipAddress, callback) =>
   request(ipstack(ipAddress), (error, response, body) => {
+    console.log(response);
     if (!error && response.statusCode == 200) {
       callback(body);
     }

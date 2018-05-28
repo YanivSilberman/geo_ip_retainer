@@ -3,9 +3,7 @@ const router = express.Router();
 const CronJob = require('cron').CronJob;
 
 // IMPORT DB METHODS
-import dbMethods from '../db';
-import db from '../db/config';
-
+import controllers from '../db/controllers/user.ctrl';
 import { makeIpStackReq } from '../library';
 
 // DEFAULT INDEX ROUTE
@@ -17,14 +15,21 @@ router.get('/', (req, res, next) => {
   if (ipAddress.substr(0, 7) == "::ffff:") ipAddress = ipAddress.substr(7);
 
   // general return functions
-  const success = (msg, ip, geo) => () =>
-    res.status(200).render('index', { 'title': msg, ip, geo });
-  const failure = msg => () =>
-    res.status(200).render('error', { 'title': msg });
+  const success = geo => data => {
+    console.log('success', geo);
+    res.set('Content-Type', 'text/json');
+    res.status(200).json(geo);
+    return data;
+  };
+
+  const failure = msg => err => res.status(200).send({
+    message: msg,
+    error: err
+  });
 
   // if found ip in DB callback
   const ifFound = data => {
-    const { id, last_update } = data;
+    const { _id, last_update, ipstack } = data;
     const timestamp = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
     const newDate = new Date().getTime(last_update);
 
@@ -33,13 +38,16 @@ router.get('/', (req, res, next) => {
       // fetch from api, then update in db
       makeIpStackReq(
         ipAddress,
-        body => dbMethods([
-          success('More than 30s passed, updated database', ipAddress, body),
+        body => controllers(
+          success(body),
           failure('More than 30s passed, db update failed')
-        ]).putStack(id, body)
+        ).updateUser(_id, {
+          ipstack: JSON.stringify(body),
+          last_update: new Date().getTime()
+        })
       );
     } else {
-      success('IP stored, less than 30 days have passed', ipAddress, JSON.parse(data.ipstack))();
+      success((JSON.parse(ipstack)))();
     }
   };
 
@@ -48,15 +56,18 @@ router.get('/', (req, res, next) => {
     // fetch from api, add new to db
     makeIpStackReq(
       ipAddress,
-      body => dbMethods([
-        success('New IP, geo location saved', ipAddress, body),
+      body => controllers(
+        success(body),
         failure('New IP, error saving geo location')
-      ]).insertStack(ipAddress, body));
+      ).insertUser({
+        ip_address: ipAddress,
+        ipstack: JSON.stringify(body),
+        last_update: new Date().getTime()
+      }));
   };
 
   // run query
-  dbMethods([ifFound, ifNotFound]).getStack(ipAddress);
-
+  controllers(ifFound, ifNotFound).getUserByIp(ipAddress);
 });
 
 // timer runs every day, batch updates all expired rows
@@ -68,23 +79,23 @@ new CronJob('00 00 * * * *', () => {
     const addresses = data.reduce((a,b) => a.ip_address + "," + b.ip_address);
     makeIpStackReq(addresses, body => {
 
-      // desired format: `(1, ipstack), (2, ipstack)`
-      const values = body
-        .map((x, i) => ({ id: data[i].id, stack: x.stack }))
-        .reduce((a,b,i) => {
-        if (i === 1) {
-          return `(${a.id}, '${JSON.stringify(a.stack)}'), (${b.id}, '${JSON.stringify(b.stack)}')`;
-        } else {
-          return `${a}, (${b.id}, '${JSON.stringify(b.stack)}')`
-        }
-      });
+      const c = controllers(()=>null,()=>null);
+
+      for (let i in body) {
+        c.updateUser(data[i]._id, {
+          ipstack: JSON.stringify(body[i]),
+          last_update: new Date().getTime()
+        })
+      }
 
       return dbMethods([d => d]).batchUpdate(values);
     })
   };
 
   // run db query
-  dbMethods([onQuerySuccess]).getExpired();
+  let d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  controllers(onQuerySuccess).getExpiredUsers(d.getTime());
 
 }, null, true, 'America/Los_Angeles');
 
