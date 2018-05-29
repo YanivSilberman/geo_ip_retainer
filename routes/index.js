@@ -1,10 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const CronJob = require('cron').CronJob;
+import moment from 'moment';
+
+/*
+
+test cronjob
+set request headers = to api call
+
+*/
 
 // IMPORT DB METHODS
 import controllers from '../db/controllers/user.ctrl';
-import { makeIpStackReq } from '../library';
+import { makeIpStackReq, getMonthAgo } from '../library';
 
 // DEFAULT INDEX ROUTE
 
@@ -16,7 +24,6 @@ router.get('/', (req, res, next) => {
 
   // general return functions
   const success = geo => data => {
-    console.log('success', geo);
     res.set('Content-Type', 'text/json');
     res.status(200).json(geo);
     return data;
@@ -30,11 +37,11 @@ router.get('/', (req, res, next) => {
   // if found ip in DB callback
   const ifFound = data => {
     const { _id, last_update, ipstack } = data;
-    const timestamp = new Date().getTime() + (30 * 24 * 60 * 60 * 1000);
-    const newDate = new Date().getTime(last_update);
+    const monthAgo = getMonthAgo();
+    const newDate = moment(last_update); // new Date().getTime(last_update);
 
     // if 30 days have passed
-    if (timestamp < newDate) {
+    if (newDate.isBefore(monthAgo)) {
       // fetch from api, then update in db
       makeIpStackReq(
         ipAddress,
@@ -43,7 +50,7 @@ router.get('/', (req, res, next) => {
           failure('More than 30s passed, db update failed')
         ).updateUser(_id, {
           ipstack: JSON.stringify(body),
-          last_update: new Date().getTime()
+          last_update: moment().toISOString()
         })
       );
     } else {
@@ -62,7 +69,7 @@ router.get('/', (req, res, next) => {
       ).insertUser({
         ip_address: ipAddress,
         ipstack: JSON.stringify(body),
-        last_update: new Date().getTime()
+        last_update: moment().toISOString()
       }));
   };
 
@@ -72,31 +79,35 @@ router.get('/', (req, res, next) => {
 
 // timer runs every day, batch updates all expired rows
 
-new CronJob('00 00 * * * *', () => {
+const updateAllExpired = () => {
+  console.log('updating all expired');
+
+  const returnVoid = () => null;
+
   // runs every day at LA Midnight
   const onQuerySuccess = data => {
-    // chain ip addresses from all expired
-    const addresses = data.reduce((a,b) => a.ip_address + "," + b.ip_address);
-    makeIpStackReq(addresses, body => {
-
-      const c = controllers(()=>null,()=>null);
-
-      for (let i in body) {
-        c.updateUser(data[i]._id, {
-          ipstack: JSON.stringify(body[i]),
-          last_update: new Date().getTime()
-        })
-      }
-
-      return dbMethods([d => d]).batchUpdate(values);
-    })
+    for (let user of data) {
+      const { ip_address, _id } = user;
+      makeIpStackReq(ip_address, body => {
+        // this runs in background
+        controllers(returnVoid, returnVoid)
+          .updateUser(_id, {
+            ipstack: JSON.stringify(body),
+            last_update: moment().toISOString()
+          });
+      })
+    }
   };
 
   // run db query
-  let d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  controllers(onQuerySuccess).getExpiredUsers(d.getTime());
+  controllers(onQuerySuccess, returnVoid)
+    .getExpiredUsers(getMonthAgo());
+}
 
+// '00 00 * * * *'
+new CronJob('* * * * * *', () => {
+  console.log('running cron jobs test');
+  // updateAllExpired()
 }, null, true, 'America/Los_Angeles');
 
 module.exports = router;

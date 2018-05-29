@@ -8,7 +8,6 @@ export default (success, failure) => ({
 
   getUsers: () => {
     User.find().then((err, users) => {
-      console.log('users', users);
       if (err) {
         return failure(err);
       } else if (!users) {
@@ -56,7 +55,6 @@ export default (success, failure) => ({
   updateUser: (id, params) => User
     .findOneAndUpdate({ _id: id }, {$set: params})
     .then((user, err) => {
-      console.log('update', user, err);
       if (err) {
         failure(err);
       } else if (!user) {
