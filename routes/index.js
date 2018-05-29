@@ -104,10 +104,9 @@ const updateAllExpired = () => {
     .getExpiredUsers(getMonthAgo());
 }
 
-// '00 00 * * * *'
-new CronJob('* * * * * *', () => {
+new CronJob('00 00 * * * *', () => {
   console.log('running cron jobs test');
-  // updateAllExpired()
+  updateAllExpired()
 }, null, true, 'America/Los_Angeles');
 
 module.exports = router;
