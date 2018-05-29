@@ -12,9 +12,5 @@ export const makeIpStackReq = (ipAddress, callback) =>
     }
 });
 
-export const getMonthAgo = () => {
-  return moment().subtract(1, 'months').toISOString();
-  //let d = new Date();
-  //d.setMonth(d.getMonth() - 1);
-  //return d.getTime();
-};
+export const getMonthAgo = () => moment()
+  .subtract(1, 'months').toISOString();

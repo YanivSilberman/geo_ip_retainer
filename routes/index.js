@@ -5,7 +5,6 @@ import moment from 'moment';
 
 /*
 
-test cronjob
 set request headers = to api call
 
 */
@@ -38,7 +37,7 @@ router.get('/', (req, res, next) => {
   const ifFound = data => {
     const { _id, last_update, ipstack } = data;
     const monthAgo = getMonthAgo();
-    const newDate = moment(last_update); // new Date().getTime(last_update);
+    const newDate = moment(last_update);
 
     // if 30 days have passed
     if (newDate.isBefore(monthAgo)) {
@@ -105,7 +104,7 @@ const updateAllExpired = () => {
 }
 
 new CronJob('00 00 * * * *', () => {
-  console.log('running cron jobs test');
+  console.log('running cron jobs test, once a day');
   updateAllExpired()
 }, null, true, 'America/Los_Angeles');
 
