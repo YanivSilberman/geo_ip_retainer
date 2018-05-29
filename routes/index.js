@@ -23,7 +23,7 @@ router.get('/', (req, res, next) => {
 
   // general return functions
   const success = geo => data => {
-    res.set('Content-Type', 'text/json');
+    res.setHeader('Content-Type', 'application/json');
     res.status(200).json(geo);
     return data;
   };
